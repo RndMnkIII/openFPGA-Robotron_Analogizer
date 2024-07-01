@@ -65,6 +65,9 @@ To generate the `.rom` format binaries used by this core, you must use the MRA f
 Note:  Some of these games make excessive use of strobe effects, which may be problematic for individuals with photosensitivity, epilepsy, or other similar conditions.
 
 ## History
+v0.9.3
+* Add low-pass filter to sinistar voice channel to reduce noise.
+
 v0.9.2
 * Decrease analogue thresholds for Robotron, improving ability to hit diagonals.
 

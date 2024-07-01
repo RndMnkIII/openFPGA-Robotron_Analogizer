@@ -587,24 +587,51 @@ end
 
 wire [7:0] audio;
 wire [15:0] speech;
-wire [16:0] audio_sum;
 
-assign audio_sum = {audio, 8'd0} + speech;
+reg signed [15:0] signed_audio;
+reg signed [15:0] signed_speech;
+
+always @(clk_sys) begin
+  signed_audio   <= $signed({3'b0,audio,audio[7:4]}) - 16'sd4096;  
+  signed_speech  <= $signed({3'b0,speech[15:3]}) - 16'sd4096;
+end
+
+// Apply 3500Hz 2nd-order butterworth low-pass filter to the speech channel
+wire signed [15:0] speech_lpf;
+iir_2nd_order #(
+    .COEFF_WIDTH(22),
+    .COEFF_SCALE(15),
+    .DATA_WIDTH(16),
+    .COUNT_BITS(12)
+)  speech_lpf_iir (
+	.clk(clk_sys), // 12MHz
+	.reset(~reset_n),
+	.div(12'd256), // 12MHz / 256 ~= 48kHz.
+	.A2(-22'sd54744),
+	.A3(22'sd23517),
+	.B1(22'sd385),
+	.B2(22'sd771),
+	.B3(22'sd385),
+    .in(signed_speech),
+	.out(speech_lpf)
+);
 
 sound_i2s #(
     .CHANNEL_WIDTH(15),
-    .SIGNED_INPUT(0)
+    .SIGNED_INPUT(1)
 ) sound_i2s (
     .clk_74a(clk_74a),
     .clk_audio(clk_sys),
     
-    .audio_l(audio_sum[16:2]),
-    .audio_r(audio_sum[16:2]),
+    .audio_l( (game_id == GAME_ID_SINISTAR) ? signed_audio + speech_lpf : signed_audio + signed_audio),
+    .audio_r( (game_id == GAME_ID_SINISTAR) ? signed_audio + speech_lpf : signed_audio + signed_audio),
 
     .audio_mclk(audio_mclk),
     .audio_lrck(audio_lrck),
     .audio_dac(audio_dac)
 );
+
+
 
 ///////////////////////////////////////////////
 // Control
